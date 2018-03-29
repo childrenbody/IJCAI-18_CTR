@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split
 import pandas as pd
 import numpy as np
 from sklearn.metrics import log_loss
-import copy
+import copy, time
 
 class XGBModel:
     def __init__(self):
@@ -21,13 +21,12 @@ class XGBModel:
     def make_train(self, train, label):
         self.xgbtrain = xgb.DMatrix(train, label)
         
-    def make_watch_list(self, data, label, test_size):
-        x_train, x_test, y_train, y_test = train_test_split(data, label, test_size=test_size)
+    def make_watch_list(self, x_train, y_train, x_test, y_test):
         watch_train = xgb.DMatrix(x_train, y_train)
         watch_test = xgb.DMatrix(x_test, y_test)
         self.watch_list = [(watch_train, 'train'), (watch_test, 'val')]
         
-    def train_model(self, iters):
+    def fit(self, iters):
         self.model = xgb.train(self.param, self.xgbtrain, iters, self.watch_list)
         
     def predict(self, test):
@@ -52,17 +51,17 @@ class DataClass:
         self.data_split(file_path)
         
     def data_split(self, file_path):
-        data = pd.read_csv(file_path, index_col='instance_id')
+        data = pd.read_csv(file_path)
         self.train = data[data.is_trade.notnull()]
         self.test = data[data.is_trade.isnull()]
         
     def feature_label(self, label):
-        self.label = label
+        self.label = ['is_trade']
         self.feature = [_ for _ in self.train.columns if _ not in label]
         
     def positive_negative(self):
-        self.positive = self.train[self.train.is_trade == 1].index
-        self.negative = self.train[self.train.is_trade == 0].index.tolist()
+        self.positive = self.train[self.train.is_trade == 1].instance_id
+        self.negative = self.train[self.train.is_trade == 0].instance_id.tolist()
         
     def random_group(self, quantity):
         negative = copy.copy(self.negative)
@@ -83,6 +82,11 @@ class DataClass:
     def make_subset(self, index):
         return pd.concat([self.train.loc[self.positive, :], self.train.loc[self.negative_list[index], :]], axis=0)
         
+    @staticmethod
+    def convert_timestamp(x): return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(x))
         
+    def user_query_day(self):
+        query_day = self.train.groupby(['user_id', 'day']).size().reset_index().rename(columns={0:'user_query_day'})
+        return query_day
         
         
