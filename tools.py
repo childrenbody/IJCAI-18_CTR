@@ -5,12 +5,13 @@ Created on Wed Mar 28 12:55:20 2018
 
 @author: childrenbody
 """
-import xgboost as xgb
+
 from sklearn.model_selection import train_test_split
 import pandas as pd
 import numpy as np
 from sklearn.metrics import log_loss
 import copy, time
+import xgboost as xgb
 
 class XGBModel:
     def __init__(self):
@@ -50,6 +51,9 @@ class DataClass:
     def __init__(self, file_path):
         self.data_split(file_path)
         
+    def make_submission(self):
+            return pd.read_csv('input/round1_ijcai_18_test_a_20180301.txt', sep=' ', usecols=['instance_id'])
+        
     def data_split(self, file_path):
         data = pd.read_csv(file_path)
         self.train = data[data.is_trade.notnull()]
@@ -72,10 +76,14 @@ class DataClass:
             temp = list(range(start, end, quantity))
             self.negative_list[start] = [negative[_] for _ in temp]
         
-    def get_valid_data(self, test_size):
-        x_train, x_test, y_train, y_test = train_test_split(self.train[self.feature], self.train[self.label], test_size=0.3)
+    def get_valid_data(self, day, test_size=0.3):
+        val = self.train[self.train.day == day]
+        X = val[self.feature]
+        Y = val[self.label]
+        x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size=test_size)        
         return x_test, y_test
         
+    
     def logloss(self, y_true, y_pred):
         return np.sum(log_loss(y_true, y_pred)) / len(y_true)
     
